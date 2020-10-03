@@ -1,15 +1,22 @@
 package application;
 
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.nio.file.attribute.UserPrincipalNotFoundException;
 
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.stage.Stage;
 
 public class Main extends Application {
@@ -64,7 +71,7 @@ public class Main extends Application {
 				});
 			} catch (Exception e) {
 				stopClient();
-				System.out.println("[메시지 전달 에러] : " + e.getStackTrace());
+				System.out.println("[메시지 전달 에러] : " + e.getMessage());
 				break;
 			}
 		}
@@ -81,7 +88,7 @@ public class Main extends Application {
 					out.flush();
 				} catch (Exception e) {
 					stopClient();
-					System.out.println("[메시지 전송 에러] : " + e.getStackTrace());
+					System.out.println("[메시지 전송 에러] : " + e.getMessage());
 				}
 			}
 		};
@@ -93,10 +100,90 @@ public class Main extends Application {
 	public void start(Stage primaryStage) {
 		try {
 			BorderPane root = new BorderPane();
+			root.setPadding(new Insets(5));
+			
+			HBox hbox = new HBox();
+			hbox.setSpacing(5);
+			
+			TextField userName = new TextField();
+			userName.setPrefWidth(150);
+			userName.setPromptText("닉네임을 입력하세요.");
+			HBox.setHgrow(userName, Priority.ALWAYS);
+			
+			TextField IPText = new TextField("127.0.0.1");
+			TextField portText = new TextField("9876");
+			portText.setPrefWidth(80);
+			
+			hbox.getChildren().addAll(userName, IPText, portText);
+			root.setTop(hbox);
+			
+			textArea = new TextArea();
+			textArea.setEditable(false);
+			root.setCenter(textArea);
+			
+			TextField input = new TextField();
+			input.setPrefWidth(Double.MAX_VALUE);
+			input.setDisable(true);
+			
+			input.setOnAction(event -> {
+				send(userName.getText() + ": " + input.getText() + "\n");
+				input.setText("");
+				input.requestFocus();
+			});
+			
+			Button sendButton = new Button("보내기");
+			sendButton.setDisable(true);
+			
+			sendButton.setOnAction(event -> {
+				send(userName.getText() + ": " + input.getText() + "\n");
+				input.setText("");
+				input.requestFocus();
+			});
+			
+			Button connectionButton = new Button("접속하기");
+			connectionButton.setOnAction(event -> {
+				if(connectionButton.getText().equals("접속하기")){
+					int port = 9876;
+					try {
+						port = Integer.parseInt(portText.getText());
+					} catch (Exception e) {
+						// TODO: handle exception
+						e.printStackTrace();
+					}
+					startClient(IPText.getText(), port);
+					Platform.runLater(() -> {
+						textArea.appendText("[ 채팅방 접속\n");
+					});
+					connectionButton.setText("종료하기");
+					input.setDisable(false);
+					sendButton.setDisable(false);
+					input.requestFocus();
+				}else{
+					stopClient();
+					Platform.runLater(() -> {
+						textArea.appendText("[ 채팅방 퇴장\n");
+					});
+					connectionButton.setText("접속하기");
+					input.setDisable(true);
+					sendButton.setDisable(true);
+				}
+			});
+			
+			BorderPane pane = new BorderPane();
+			
+			pane.setLeft(connectionButton);
+			pane.setCenter(input);
+			pane.setRight(sendButton);
+			
+			root.setBottom(pane);
+			
 			Scene scene =  new Scene(root, 400, 400);
-			scene.getStylesheets().add(getClass().getResource("application.css").toString());
+			primaryStage.setTitle("[채팅 클라이언트]");
 			primaryStage.setScene(scene);
+			primaryStage.setOnCloseRequest(event -> stopClient());
 			primaryStage.show();
+			
+			connectionButton.requestFocus();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
